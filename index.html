@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cierre de Caja - Boliche</title>
+    <!-- Librería jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-color: #0f172a;
+            --subtext-color: #475569;
+            --border-color: #cbd5e1;
+            --accent: #2563eb;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --input-bg: #ffffff;
+
+            /* Fondos diferenciados por sección */
+            --bg-sec1: #f8fafc;
+            --bg-sec2: #f0fdf4; /* Efectivo */
+            --bg-sec3: #faf5ff; /* Cambio */
+            --bg-sec4: #eff6ff; /* Transferencias */
+            --bg-sec5: #fff7ed; /* Cristalería */
+        }
+
+        body.dark-mode {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f8fafc;
+            --subtext-color: #94a3b8;
+            --border-color: #334155;
+            --accent: #3b82f6;
+            --input-bg: #0f172a;
+
+            --bg-sec1: #1e293b;
+            --bg-sec2: #064e3b;
+            --bg-sec3: #3b0764;
+            --bg-sec4: #1e3a8a;
+            --bg-sec5: #431407;
+        }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    /* Reducimos la oscuridad del filtro para que se vea más la imagen (de 0.85 a 0.45) */
+    background-image: linear-gradient(rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.45)), url('wallpaper.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    margin: 0;
+    padding: 12px;
+    padding-bottom: 85px;
+    color: var(--text-color);
+    font-size: 16px;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.app-container {
+    max-width: 480px;
+    margin: 0 auto;
+    /* Hacemos la tarjeta semi-transparente (90% de opacidad) para que se note el fondo */
+    background: rgba(255, 255, 255, 0.70); 
+    padding: 16px;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+}
+
+/* Opcional: Para cuando usen el Modo Oscuro, que también sea semi-transparente */
+body.dark-mode .app-container {
+    background: rgba(30, 41, 59, 0.70);
+}
+
+        .logo-container { 
+    text-align: center; 
+    margin-bottom: 0px; /* Reducido de 12px a 0 para acercarlo */
+}
+       .logo-img { 
+    max-width: 180px; 
+    max-height: 90px; 
+    object-fit: contain; 
+}
+
+h1 {
+    text-align: center;
+    font-size: 1.3em;
+    color: var(--text-color);
+    margin: 2px 0 12px 0; /* Reducimos el margen superior de 4px a 2px */
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+        .section-card {
+            border: 1px solid var(--border-color);
+            padding: 14px;
+            border-radius: 14px;
+            margin-bottom: 12px;
+            transition: background-color 0.3s;
+        }
+        
+        .sec-turno { background-color: var(--bg-sec1); }
+        .sec-efectivo { background-color: var(--bg-sec2); }
+        .sec-cambio { background-color: var(--bg-sec3); }
+        .sec-transf { background-color: var(--bg-sec4); }
+        .sec-cristal { background-color: var(--bg-sec5); }
+
+        .section-title {
+            font-size: 1.15em;
+            font-weight: 900;
+            color: var(--accent);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        label { 
+            font-size: 0.9em; 
+            font-weight: 800; 
+            display: block; 
+            margin-top: 10px; 
+            color: var(--subtext-color); 
+            text-transform: uppercase;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1em;
+            margin-top: 4px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            box-sizing: border-box;
+            background: var(--input-bg);
+            color: var(--text-color);
+        }
+        
+        /* TARJETA CAJERO Y TOTAL RESALTADO GIGANTE */
+        .cajero-resaltado-box {
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            color: #ffffff;
+            padding: 16px;
+            border-radius: 16px;
+            margin-top: 14px;
+            text-align: center;
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
+            border: 2px solid #60a5fa;
+        }
+        .cajero-nombre {
+            font-size: 2em;
+            font-weight: 900;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #fef08a;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+        }
+        .cajero-total-label {
+            font-size: 0.9em;
+            font-weight: 800;
+            opacity: 0.9;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .cajero-total-monto {
+            font-size: 2.2em;
+            font-weight: 900;
+            margin-top: 2px;
+            color: #ffffff;
+        }
+
+        /* POSNET BLANCO (CON LOGO PAYWAY) */
+        .box-blanco {
+            background-color: #ffffff;
+            border: 2px solid #cbd5e1;
+            padding: 12px;
+            border-radius: 10px;
+            margin-top: 8px;
+        }
+        body.dark-mode .box-blanco {
+            background-color: #1e293b;
+            border-color: #475569;
+        }
+        .payway-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .payway-logo-icon {
+            height: 24px;
+            object-fit: contain;
+        }
+        .input-monto-blanco {
+            background-color: #f8fafc !important;
+            color: #0f172a !important;
+            font-weight: bold !important;
+            font-size: 1.25em !important;
+            border: 2px solid #94a3b8 !important;
+        }
+        body.dark-mode .input-monto-blanco {
+            background-color: #0f172a !important;
+            color: #f8fafc !important;
+            border-color: #64748b !important;
+        }
+
+        /* POSNET MERCADO PAGO CON LOGO */
+        .box-mp {
+            background-color: #fefce8;
+            border: 2px solid #eab308;
+            padding: 12px;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+        body.dark-mode .box-mp {
+            background-color: #422006;
+            border-color: #ca8a04;
+        }
+        .mp-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .mp-logo-icon {
+            width: 26px;
+            height: 26px;
+            object-fit: contain;
+        }
+        .input-monto-mp {
+            background-color: #fef08a !important;
+            color: #713f12 !important;
+            font-weight: bold !important;
+            font-size: 1.25em !important;
+            border: 2px solid #ca8a04 !important;
+        }
+        body.dark-mode .input-monto-mp {
+            background-color: #713f12 !important;
+            color: #fef08a !important;
+            border-color: #eab308 !important;
+        }
+
+        /* INPUT DE TRANSFERENCIAS */
+        .input-monto-transf {
+            background-color: #eff6ff !important;
+            color: #1e40af !important;
+            font-weight: bold !important;
+            font-size: 1.25em !important;
+            border: 2px solid #3b82f6 !important;
+        }
+        body.dark-mode .input-monto-transf {
+            background-color: #1e3a8a !important;
+            color: #bfdbfe !important;
+            border-color: #60a5fa !important;
+        }
+
+        .cambio-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            margin-top: 4px;
+        }
+        .cambio-input-wrapper { flex: 1; }
+        
+        .checkbox-gigante-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+        }
+        .checkbox-gigante-container label {
+            font-size: 0.9em;
+            font-weight: 800;
+            margin-bottom: 4px;
+            text-align: center;
+        }
+
+        /* ESTILOS BOTÓN SÍ / NO */
+        .btn-toggle-devolvio {
+            width: 90px;
+            height: 48px; /* Mismo alto que el campo de texto */
+            font-size: 1.3em;
+            font-weight: 900;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-toggle-devolvio:active {
+            transform: scale(0.96);
+        }
+        .btn-toggle-devolvio.status-si {
+            background-color: #16a34a !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3);
+        }
+        .btn-toggle-devolvio.status-no {
+            background-color: #dc2626 !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 10px rgba(220, 38, 38, 0.3);
+        }
+
+        .counter-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 6px;
+        }
+        .counter-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            width: 48px;
+            height: 48px;
+            font-size: 1.5em;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .counter-btn:active { opacity: 0.8; }
+        .counter-input { text-align: center; font-weight: bold; font-size: 1.2em; }
+
+        .btn-action {
+            background-color: var(--success);
+            color: white;
+            border: none;
+            padding: 16px;
+            font-size: 1.05em;
+            width: 100%;
+            border-radius: 12px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+            text-transform: uppercase;
+        }
+        .btn-drive {
+            background-color: #0284c7;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+        }
+        .btn-reset {
+            background-color: #64748b;
+            box-shadow: 0 4px 12px rgba(100, 116, 139, 0.25);
+        }
+        .btn-add {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            font-size: 0.9em;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 8px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .img-preview {
+            max-width: 100%;
+            max-height: 120px;
+            border-radius: 8px;
+            margin-top: 8px;
+            display: none;
+            border: 1px solid var(--border-color);
+        }
+
+        .result-banner {
+            padding: 14px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: 900;
+            margin-top: 14px;
+            text-transform: uppercase;
+        }
+        .status-ok { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .status-bad { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+        .history-list { max-height: 180px; overflow-y: auto; margin-top: 8px; }
+        .history-card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 10px; border-radius: 8px; margin-bottom: 6px; font-size: 0.85em; }
+
+        .tanda-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 6px;
+        }
+        .btn-remove-tanda {
+            background: var(--danger);
+            color: white;
+            border: none;
+            width: 42px;
+            height: 42px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.1em;
+            cursor: pointer;
+        }
+
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #1e293b;
+            color: white;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+        .theme-btn {
+            background: #334155;
+            color: white;
+            border: 1px solid #475569;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .font-btn-group {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .font-btn {
+            background: #334155;
+            color: white;
+            border: 1px solid #475569;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .font-btn:active, .theme-btn:active { background: var(--accent); }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="logo-container">
+        <img id="logoBoliche" class="logo-img" src="carilo_logo.png" alt="Logo Carilo" onerror="this.style.display='none'">
+    </div>
+    
+    <h1>Cierre de Caja</h1>
+
+    <!-- CONFIGURACIÓN DE TURNO -->
+    <div class="section-card sec-turno">
+        <div class="section-title">CONFIGURACIÓN DE TURNO</div>
+        <label>FECHA CONTABLE (AUTO NOCTURNA):</label>
+        <input type="date" id="fechaContable">
+
+        <label>CAJERO A RENDIR:</label>
+        <select id="camareroSelect" onchange="actualizarPantalla()">
+            <option value="">-- CARGANDO MOZOS ACTIVOS... --</option>
+        </select>
+
+        <!-- CARTEL DESTACADO -->
+        <div id="badgeFudoCamarero" class="cajero-resaltado-box" style="display: none;">
+            <div class="cajero-nombre" id="nombreCamareroResaltado">GIANFRANCO</div>
+            <div class="cajero-total-label">TOTAL A RENDIR (FUDO)</div>
+            <div class="cajero-total-monto">$<span id="valFudoCamarero">0</span></div> </div> </div>      <!-- BLOQUE OPERATIVO --> <div id="bloqueOperativo" style="display: none;">          <!-- 1° EFECTIVO ENTREGADO --> <div class="section-card sec-efectivo"> <div class="section-title">1° EFECTIVO ENTREGADO 💵 $$$</div> <div id="contenedorTandasEfectivo"> <div class="tanda-row"> <input type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" onkeyup="if(event.key==='Enter') this.blur();" class="input-efectivo-tanda" placeholder="ENTREGA 1 ($$$)" oninput="formatearInputMoneda(this); calcularTodo()"> </div> </div>              <button type="button" class="btn-add" onclick="agregarTandaEfectivo()">+ AGREGAR ENTREGA $$$</button>
+            <p style="font-size: 1.05em; font-weight: 900; margin-top: 10px; color: var(--text-color); text-transform: uppercase;">
+                TOTAL EFECTIVO ENTREGADO: $<span id="totalEfectivoSumado">0</span> </p> </div>          <!-- 2° FONDO DE CAMBIO --> <div class="section-card sec-cambio"> <div class="section-title">2° CAMBIO $$</div>
+            <div class="cambio-row">
+                <div class="cambio-input-wrapper">
+                    <label style="margin-top:0;">FONDO DE CAMBIO ($):</label>
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" onkeyup="if(event.key==='Enter') this.blur();" id="fondoCambio" value="50.000" oninput="formatearInputMoneda(this); calcularTodo()">
+                </div>
+                <div class="checkbox-gigante-container">
+                    <label>¿DEVOLVIÓ?</label>
+                    <button type="button" id="btnCambioDevuelto" class="btn-toggle-devolvio status-si" onclick="toggleDevolucionCambio()">SÍ</button>
+                    <!-- Input oculto para mantener compatibilidad con la lógica -->
+                    <input type="checkbox" id="chkCambioDevuelto" checked style="display:none;">
+                </div>
+            </div>
+        </div>
+
+        <!-- 3° POSNETS CON LOGOS MAYÚSCULA -->
+        <div class="section-card" style="background-color: #f8fafc; border: 1px solid #cbd5e1;">
+            <div class="section-title">3° RENDICIÓN POSNETS & COMPROBANTES</div>
+            
+            <!-- POSNET BLANCO (PAYWAY) -->
+            <div class="box-blanco">
+                <div class="payway-header">
+                    <img src="https://www.payway.com.ar/images/logo-payway.svg" class="payway-logo-icon" alt="Payway Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/893/893081.png'">
+                    <b style="color:var(--text-color); font-size:1.1em; text-transform: uppercase;">POSNET BLANCO (PAYWAY)</b>
+                </div>
+                
+                <label>MONTO CUPONES BLANCO ($):</label>
+                <input type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" onkeyup="if(event.key==='Enter') this.blur();" id="montoBlanco" class="input-monto-blanco" placeholder="0" oninput="formatearInputMoneda(this); calcularTodo()">
+
+                <label>N° CIERRE DE LOTE (OPCIONAL):</label>
+                <input type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" onkeyup="if(event.key==='Enter') this.blur();" id="loteBlanco" placeholder="Ej: 00012">
+
+                <label>📸 FOTO COMPROBANTE CIERRE BLANCO:</label>
+                <input type="file" id="fotoBlanco" accept="image/*" capture="environment" onchange="previsualizarFoto(this, 'prevBlanco')">
+                <img id="prevBlanco" class="img-preview" alt="Previsualización Cierre Blanco">
+            </div>
+
+            <!-- POSNET MERCADO PAGO -->
+            <div class="box-mp">
+                <div class="mp-header">
+                    <img src="https://http2.mlstatic.com/frontend-assets/ui-navigation/5.19.1/mercadopago/favicon.svg" class="mp-logo-icon" alt="Mercado Pago Logo" onerror="this.style.display='none'">
+                    <b style="color: #b45309; font-size:1.1em; text-transform: uppercase;">POSNET MERCADO PAGO</b>
+                </div>
+                
+                <label>MONTO CUPONES MP ($):</label>
+                <input type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" onkeyup="if(event.key==='Enter') this.blur();" id="montoMP" class="input-monto-mp" placeholder="0" oninput="formatearInputMoneda(this); calcularTodo()">
+
+                <label>N° CIERRE DE LOTE MP (OPCIONAL):</label>
+                <input type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" onkeyup="if(event.key==='Enter') this.blur();" id="loteMP" placeholder="Ej: 00045">
+
+                <label>📸 FOTO COMPROBANTE CIERRE MP:</label>
+                <input type="file" id="fotoMP" accept="image/*" capture="environment" onchange="previsualizarFoto(this, 'prevMP')">
+                <img id="prevMP" class="img-preview" alt="Previsualización Cierre MP">
+            </div>
+        </div>
+
+        <!-- 4° TRANSFERENCIAS BANCARIAS / MP -->
+        <div class="section-card sec-transf">
+            <div class="section-title">4° TRANSF. RECIBIDAS 📲</div>
+            
+            <label>MONTO TOTAL TRANSFERENCIAS ($):</label>
+            <input type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" onkeyup="if(event.key==='Enter') this.blur();" id="montoTransf" class="input-monto-transf" placeholder="0" oninput="formatearInputMoneda(this); calcularTodo()">
+
+            <label>DETALLE / TITULAR (OPCIONAL):</label>
+            <input type="text" enterkeyhint="done" onkeyup="if(event.key==='Enter') this.blur();" id="detalleTransf" placeholder="Ej: Transf Juan Perez / Alias Boliche">
+
+            <label>📸 FOTO COMPROBANTE DE TRANSFERENCIA:</label>
+            <input type="file" id="fotoTransf" accept="image/*" capture="environment" onchange="previsualizarFoto(this, 'prevTransf')">
+            <img id="prevTransf" class="img-preview" alt="Previsualización Transferencia">
+        </div>
+
+        <!-- 5° TICKETS VASOS Y COPAS -->
+        <div class="section-card sec-cristal">
+            <div class="section-title">5° TICKETS VASOS Y COPAS</div>
+            
+            <label>TICKETS VASOS ($<span id="precioVaso">4.000</span> c/u):</label>
+            <div class="counter-group">
+                <button type="button" class="counter-btn" onclick="modificarCantidad('cantVasos', -1)">-</button>
+                <input type="number" inputmode="numeric" id="cantVasos" class="counter-input" value="0" readonly>
+                <button type="button" class="counter-btn" onclick="modificarCantidad('cantVasos', 1)">+</button>
+            </div>
+
+            <label>TICKETS COPAS ($<span id="precioCopa">6.000</span> c/u):</label> <div class="counter-group"> <button type="button" class="counter-btn" onclick="modificarCantidad('cantCopas', -1)">-</button> <input type="number" inputmode="numeric" id="cantCopas" class="counter-input" value="0" readonly> <button type="button" class="counter-btn" onclick="modificarCantidad('cantCopas', 1)">+</button> </div>  <p style="font-size: 1em; font-weight: 900; margin-top: 10px; color: var(--text-color); text-transform: uppercase;"> TOTAL PLATA TICKETS: $<span id="totalValesSumados">0</span>
+            </p>
+        </div>
+
+        <!-- RESUMEN FINAL -->
+        <div id="bannerResultado" class="result-banner status-ok">
+            😎 CAJA PERFECTA ($0)
+        </div>
+
+        <!-- BOTONES DE ACCIÓN -->
+        <button type="button" class="btn-action" onclick="guardarLocal()">📱 GUARDAR EN MEMORIA CELULAR</button>
+        <button type="button" class="btn-action btn-reset" onclick="reiniciarFormulario()">🔄 INICIAR NUEVO CIERRE</button>
+    </div>
+
+    <!-- HISTORIAL -->
+    <div class="section-card sec-turno" style="margin-top: 16px;">
+        <div class="section-title">📂 HISTORIAL LOCAL (EN CELULAR)</div>
+        <div class="history-list" id="contenedorHistorial">Cargando registros...</div>
+    </div>
+</div>
+
+<!-- BARRA INFERIOR -->
+<div class="bottom-bar">
+    <button type="button" class="theme-btn" onclick="toggleTheme()">
+        <span id="themeIcon">🌙</span> <span id="themeText">Modo Oscuro</span>
+    </button>
+
+    <div class="font-btn-group">
+        <span style="font-size:0.75rem; font-weight:600; color:#cbd5e1;">Letra:</span>
+        <button type="button" class="font-btn" onclick="cambiarTamanoTexto(-2)">A-</button>
+        <button type="button" class="font-btn" onclick="restablecerTamanoTexto()">N</button>
+        <button type="button" class="font-btn" onclick="cambiarTamanoTexto(2)">A+</button>
+    </div>
+</div>
+
+<script>
+    const FUDO_CONFIG = {
+        TOKEN: "AQUI_TU_TOKEN_DE_FUDO",
+        URL: "https://api.getfudo.com/v1"
+    };
+
+    const P_VASO = 4000;
+    const P_COPA = 6000;
+    let contadorTandas = 1;
+    let currentFontSize = parseInt(localStorage.getItem('user_font_size')) || 16;
+    let imgBase64Blanco = "";
+    let imgBase64MP = "";
+    let imgBase64Transf = "";
+
+    window.onload = function() {
+        let savedTheme = localStorage.getItem('app_theme') || 'light';
+        if (savedTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+            document.getElementById('themeIcon').innerText = "☀️";
+            document.getElementById('themeText').innerText = "Modo Claro";
+        }
+        document.body.style.fontSize = currentFontSize + "px";
+        cargarFechaNocturna();
+        obtenerMozosConMesasAbiertas();
+        mostrarHistorial();
+    };
+
+    // Función para alternar el botón de devolución de cambio Sí / No
+    function toggleDevolucionCambio() {
+        let chk = document.getElementById('chkCambioDevuelto');
+        let btn = document.getElementById('btnCambioDevuelto');
+
+        chk.checked = !chk.checked;
+
+        if (chk.checked) {
+            btn.innerText = "SÍ";
+            btn.className = "btn-toggle-devolvio status-si";
+        } else {
+            btn.innerText = "NO";
+            btn.className = "btn-toggle-devolvio status-no";
+        }
+
+        calcularTodo();
+    }
+
+    function previsualizarFoto(input, targetId) {
+        if (input.files && input.files[0]) {
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                let imgEl = document.getElementById(targetId);
+                imgEl.src = e.target.result;
+                imgEl.style.display = 'block';
+                if (targetId === 'prevBlanco') imgBase64Blanco = e.target.result;
+                if (targetId === 'prevMP') imgBase64MP = e.target.result;
+                if (targetId === 'prevTransf') imgBase64Transf = e.target.result;
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    async function obtenerMozosConMesasAbiertas() {
+        let select = document.getElementById('camareroSelect');
+        select.innerHTML = '<option value="">-- CARGANDO MOZOS ACTIVOS... --</option>';
+
+        try {
+            let response = await fetch(`${FUDO_CONFIG.URL}/sales/active`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${FUDO_CONFIG.TOKEN}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) throw new Error("Sin conexión a Fudo");
+
+            let data = await response.json();
+            let mozosMap = {};
+            if (data && data.data) {
+                data.data.forEach(venta => {
+                    let mozoNombre = venta.waiter ? venta.waiter.name : "Barra General";
+                    let totalVenta = venta.total || 0;
+                    mozosMap[mozoNombre] = (mozosMap[mozoNombre] || 0) + totalVenta;
+                });
+            }
+
+            select.innerHTML = '<option value="">-- SELECCIONAR CAJERO --</option>';
+            let nombresMozos = Object.keys(mozosMap);
+
+            if (nombresMozos.length === 0) {
+                select.innerHTML = '<option value="">⚠️ NO HAY MOZOS CON MESAS ABIERTAS</option>';
+                return;
+            }
+
+            nombresMozos.forEach(nombre => {
+                let opt = document.createElement('option');
+                opt.value = nombre;
+                opt.setAttribute('data-fudo', mozosMap[nombre]);
+                opt.textContent = `${nombre.toUpperCase()} ($${fmt(mozosMap[nombre])})`;
+                select.appendChild(opt);
+            });
+
+        } catch (error) {
+            select.innerHTML = `
+                <option value="">-- SELECCIONAR CAJERO --</option>
+                <option value="GIANFRANCO" data-fudo="2300400">GIANFRANCO ($2.300.400)</option>
+                <option value="LEONARDO" data-fudo="3000000">LEONARDO ($3.000.000)</option>
+                <option value="TINCHO" data-fudo="4200000">TINCHO ($4.200.000)</option>
+            `;
+        }
+    }
+
+    function toggleTheme() {
+        let isDark = document.body.classList.toggle('dark-mode');
+        if (isDark) {
+            localStorage.setItem('app_theme', 'dark');
+            document.getElementById('themeIcon').innerText = "☀️";
+            document.getElementById('themeText').innerText = "Modo Claro";
+        } else {
+            localStorage.setItem('app_theme', 'light');
+            document.getElementById('themeIcon').innerText = "🌙";
+            document.getElementById('themeText').innerText = "Modo Oscuro";
+        }
+    }
+
+    function cambiarTamanoTexto(delta) {
+        currentFontSize = Math.min(Math.max(12, currentFontSize + delta), 26);
+        document.body.style.fontSize = currentFontSize + "px";
+        localStorage.setItem('user_font_size', currentFontSize);
+    }
+
+    function restablecerTamanoTexto() {
+        currentFontSize = 16;
+        document.body.style.fontSize = "16px";
+        localStorage.setItem('user_font_size', 16);
+    }
+
+    function fmt(num) { return num.toLocaleString('es-AR'); }
+
+    function parseVal(numStr) {
+        if (!numStr) return 0;
+        return parseInt(numStr.toString().replace(/\./g, '')) || 0;
+    }
+
+    function formatearInputMoneda(input) {
+        let val = input.value.replace(/\D/g, '');
+        if (val) {
+            input.value = parseInt(val).toLocaleString('es-AR');
+        } else {
+            input.value = '';
+        }
+    }
+
+    function cargarFechaNocturna() {
+        let ahora = new Date();
+        let hora = ahora.getHours();
+        if (hora >= 0 && hora < 6) {
+            ahora.setDate(ahora.getDate() - 1);
+        }
+        let anio = ahora.getFullYear();
+        let mes = String(ahora.getMonth() + 1).padStart(2, '0');
+        let dia = String(ahora.getDate()).padStart(2, '0');
+        document.getElementById('fechaContable').value = `${anio}-${mes}-${dia}`;
+    }
+
+    function actualizarPantalla() {
+        let select = document.getElementById('camareroSelect');
+        let option = select.options[select.selectedIndex];
+        let cam = select.value;
+        let badge = document.getElementById('badgeFudoCamarero');
+        let bloque = document.getElementById('bloqueOperativo');
+
+        if (cam) {
+            let montoFudo = parseInt(option.getAttribute('data-fudo')) || 0;
+            document.getElementById('nombreCamareroResaltado').innerText = cam.toUpperCase();
+            document.getElementById('valFudoCamarero').innerText = fmt(montoFudo);
+            badge.style.display = 'block';
+            bloque.style.display = 'block';
+            calcularTodo();
+        } else {
+            badge.style.display = 'none';
+            bloque.style.display = 'none';
+        }
+    }
+
+    function agregarTandaEfectivo() {
+        contadorTandas++;
+        let cont = document.getElementById('contenedorTandasEfectivo');
+        let div = document.createElement('div');
+        div.className = 'tanda-row';
+        div.innerHTML = `
+            <input type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" onkeyup="if(event.key==='Enter') this.blur();" class="input-efectivo-tanda" placeholder="ENTREGA ${contadorTandas} ($$$)" oninput="formatearInputMoneda(this); calcularTodo()">
+            <button type="button" class="btn-remove-tanda" onclick="eliminarTanda(this)">✕</button>
+        `;
+        cont.appendChild(div);
+    }
+
+    function eliminarTanda(btn) {
+        btn.parentElement.remove();
+        calcularTodo();
+    }
+
+    function obtenerTotalEfectivoTandas() {
+        let inputs = document.querySelectorAll('.input-efectivo-tanda');
+        let total = 0;
+        inputs.forEach(inp => { total += parseVal(inp.value); });
+        document.getElementById('totalEfectivoSumado').innerText = fmt(total);
+        return total;
+    }
+
+    function modificarCantidad(id, delta) {
+        let el = document.getElementById(id);
+        let val = Math.max(0, parseInt(el.value || 0) + delta);
+        el.value = val;
+        calcularTodo();
+    }
+
+    function calcularTodo() {
+        let select = document.getElementById('camareroSelect');
+        let option = select.options[select.selectedIndex];
+        let fudo = parseInt(option.getAttribute('data-fudo')) || 0;
+
+        let fondo = parseVal(document.getElementById('fondoCambio').value);
+        let devolvioCambio = document.getElementById('chkCambioDevuelto').checked;
+
+        let vasos = parseInt(document.getElementById('cantVasos').value) || 0;
+        let copas = parseInt(document.getElementById('cantCopas').value) || 0;
+        let cristaleria = (vasos * P_VASO) + (copas * P_COPA);
+        document.getElementById('totalValesSumados').innerText = fmt(cristaleria);
+
+        let totalEsperado = fudo - cristaleria;
+        if (!devolvioCambio) totalEsperado += fondo;
+
+        let totalEfectivo = obtenerTotalEfectivoTandas();
+        let mBlanco = parseVal(document.getElementById('montoBlanco').value);
+        let mMP = parseVal(document.getElementById('montoMP').value);
+        let mTransf = parseVal(document.getElementById('montoTransf').value);
+
+        let totalIngresado = totalEfectivo + mBlanco + mMP + mTransf;
+        let dif = totalIngresado - totalEsperado;
+        let banner = document.getElementById('bannerResultado');
+
+        if (dif === 0 && totalIngresado > 0) {
+            banner.className = "result-banner status-ok";
+            banner.innerText = "😎 CAJA CUADRADA ($0)";
+        } else if (dif < 0) {
+            banner.className = "result-banner status-bad";
+            banner.innerText = `😭 FALTAN $${fmt(Math.abs(dif))}`;
+        } else if (dif > 0) {
+            banner.className = "result-banner status-ok";
+            banner.innerText = `🧐 SOBRAN $${fmt(dif)}`;
+        } else {
+            banner.className = "result-banner status-ok";
+            banner.innerText = "Ingrese importes...";
+        }
+    }
+
+    function reiniciarFormulario() {
+        document.getElementById('camareroSelect').value = "";
+        document.getElementById('badgeFudoCamarero').style.display = "none";
+        document.getElementById('bloqueOperativo').style.display = "none";
+        document.getElementById('contenedorTandasEfectivo').innerHTML = `
+            <div class="tanda-row">
+                <input type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" onkeyup="if(event.key==='Enter') this.blur();" class="input-efectivo-tanda" placeholder="ENTREGA 1 ($$$)" oninput="formatearInputMoneda(this); calcularTodo()">
+            </div>
+        `;
+        
+        // Restablecer botón de cambio a SÍ (verde) por defecto
+        document.getElementById('chkCambioDevuelto').checked = true;
+        let btnCambio = document.getElementById('btnCambioDevuelto');
+        if (btnCambio) {
+            btnCambio.innerText = "SÍ";
+            btnCambio.className = "btn-toggle-devolvio status-si";
+        }
+
+        document.getElementById('montoBlanco').value = "";
+        document.getElementById('loteBlanco').value = "";
+        document.getElementById('montoMP').value = "";
+        document.getElementById('loteMP').value = "";
+        document.getElementById('montoTransf').value = "";
+        document.getElementById('detalleTransf').value = "";
+        document.getElementById('cantVasos').value = "0";
+        document.getElementById('cantCopas').value = "0";
+        document.getElementById('prevBlanco').style.display = "none";
+        document.getElementById('prevMP').style.display = "none";
+        document.getElementById('prevTransf').style.display = "none";
+        imgBase64Blanco = "";
+        imgBase64MP = "";
+        imgBase64Transf = "";
+        contadorTandas = 1;
+    }
+
+    function guardarLocal() {
+        let registro = {
+            fecha: document.getElementById('fechaContable').value,
+            camarero: document.getElementById('nombreCamareroResaltado').innerText,
+            efectivo: document.getElementById('totalEfectivoSumado').innerText,
+            montoBlanco: document.getElementById('montoBlanco').value || "0",
+            montoMP: document.getElementById('montoMP').value || "0",
+            montoTransf: document.getElementById('montoTransf').value || "0",
+            estado: document.getElementById('bannerResultado').innerText,
+            hora: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+        };
+
+        let h = JSON.parse(localStorage.getItem('cierres_boliche')) || [];
+        h.unshift(registro);
+        localStorage.setItem('cierres_boliche', JSON.stringify(h));
+        alert("¡Cierre guardado en la memoria del celular!");
+        mostrarHistorial();
+    }
+
+    function mostrarHistorial() {
+        let h = JSON.parse(localStorage.getItem('cierres_boliche')) || [];
+        let cont = document.getElementById('contenedorHistorial');
+        if(h.length === 0) {
+            cont.innerHTML = "<p style='font-size:0.8rem; color:#888;'>Sin cierres guardados aún.</p>";
+            return;
+        }
+        cont.innerHTML = h.map(i => `
+            <div class="history-card">
+                <b>${i.fecha}</b> (${i.hora}) - <b>${i.camarero}</b><br>
+                <span>💵 Ef. $${i.efectivo} | ⚪ Bl. $${i.montoBlanco} | 🟡 MP $${i.montoMP} | 📲 Tr. $${i.montoTransf || "0"}</span><br>
+                <b>${i.estado}</b>
+            </div>
+        `).join('');
+    }
+</script>
+
+</body>
+</html>
